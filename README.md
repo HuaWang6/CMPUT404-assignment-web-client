@@ -7,8 +7,10 @@ See requirements.org (plain-text) for a description of the project.
 
 Make a simple web-client like curl or wget
 
-Reference
+Collaborators / Reference
 ==============================
+
+Reference:
 
 https://www.tutorialspoint.com/http/http_requests.htm
 
