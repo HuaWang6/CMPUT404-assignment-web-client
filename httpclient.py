@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # coding: utf-8
 # Copyright 2016 Abram Hindle, https://github.com/tywtyw2002, and https://github.com/treedust
-# 
+# copyright 2023 Hua Wang
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -22,7 +22,7 @@ import sys
 import socket
 import re
 # you may use urllib to encode data appropriately
-import urllib.parse
+from urllib.parse import urlencode
 
 def help():
     print("httpclient.py [GET/POST] [URL]\n")
@@ -40,14 +40,50 @@ class HTTPClient(object):
         self.socket.connect((host, port))
         return None
 
-    def get_code(self, data):
-        return None
+    def get_info(self, url):
+        info = url[7:]
+        hp = info.split("/")[0]
+        if ":" in hp:
+            i = hp.index(":")
+            host = hp[:i]
+        else:
+            host = hp
 
-    def get_headers(self,data):
-        return None
+        if ":" in hp:
+            port = int(hp[i+1:])
+
+        else:
+            port =  80
+
+        path = "/" + "/".join(info.split("/")[1:])
+        
+        return host, port, path
+
+
+    def get_code(self, data):
+        dataL = data.split("\r\n")
+        code = int(dataL[0].split(" ")[1])
+        return code
+
+    def get_headers(self, request , url , args=None):
+        host,port,path = self.get_info(url)
+        if request == "G":
+            header = "GET"+ " " + path + " " + "HTTP/1.1\r\n"+"Host: " + host + "\r\n" + "Connection: close\r\n\r\n"
+        else:
+            if args:
+                length = len(urlencode(args))
+            else:
+                length = 0
+            
+            header = "POST" + " " + path + " " + "HTTP/1.1\r\n"+"Host: " + host + '\r\n' + "Content-Type: application/x-www-form-urlencoded\r\n" + "Content-Length: " + str(length) + '\r\n\r\n'
+            
+            if length>0:
+                header += urlencode(args)
+            
+        return header
 
     def get_body(self, data):
-        return None
+        return data.split("\r\n\r\n")[1]
     
     def sendall(self, data):
         self.socket.sendall(data.encode('utf-8'))
@@ -68,13 +104,27 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        host,port,path = self.get_info(url)
+        header = self.get_headers("G" ,url ,args)
+        self.connect(host,port)
+        self.sendall(header)
+        response = self.recvall(self.socket)
+        code = self.get_code(response)
+        body = self.get_body(response)
+        self.close()
+
         return HTTPResponse(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        host,port,path = self.get_info(url)
+        header = self.get_headers("P" ,url ,args)
+        self.connect(host,port)
+        self.sendall(header)
+        response = self.recvall(self.socket)
+        code = self.get_code(response)
+        body = self.get_body(response)
+        self.close()
+
         return HTTPResponse(code, body)
 
     def command(self, url, command="GET", args=None):
